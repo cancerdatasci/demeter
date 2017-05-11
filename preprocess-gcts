@@ -1,0 +1,37 @@
+#!/usr/bin/env Rscript
+
+library(argparser)
+library(futile.logger)
+library(foreach)
+library(assertthat)
+library(caret)
+source("pre_fit.R")
+source("k_fold.R")
+source("demeter.R")
+
+invisible(flog.threshold(DEBUG))
+
+parser <- arg_parser("Consumes multiple GCT files with shRNA fold-change data and performs preprocessing to generate the datastructure that DEMETER uses as input.")
+parser <- add_argument(parser, "output_file", "Path to write data post preprocessing")
+parser <- add_argument(parser, "batches", "Path to csv file which contains which cell line was contained within which batch")
+parser <- add_argument(parser, "foldchangegct", "Comma seperated list of gct files containing shRNA fold-change data")
+args <- parse_args(parser)
+
+fc.mat.filenames <- strsplit(args$foldchangegct, ",")[[1]]
+batches.filename <- args$batches
+output.filename <- args$output_file
+
+batch.per.sample <- read.csv(batches.filename, check.names=F)
+batch.per.sample <- setNames(batch.per.sample[["DEMETER batch"]],
+	batch.per.sample[["Name"]])
+
+fc.matrices <- lapply(fc.mat.filenames, function(x) { 
+    df <- read.table(x, as.is=T, header=T, skip=2, row.names=1, quote='', comment='', check.names=F)
+    m <- as.matrix(df[,c(-1)])
+    colnames(m) <- colnames(df[,-1])
+    rownames(m) <- rownames(df)
+    m
+})
+
+m <- merge.data.for.DEMETER(fc.matrices, batch.per.sample)
+save(m, file=output.filename)

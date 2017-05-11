@@ -1,0 +1,8 @@
+eval-demeter
+demeter.R
+dependencies.R
+k_fold.R
+plot_demeter_results.R
+post_fit.R
+pre_fit.R
+SGD.cpp

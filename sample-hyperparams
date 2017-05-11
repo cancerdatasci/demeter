@@ -1,0 +1,39 @@
+#!/usr/bin/env Rscript
+
+library(optparse)
+
+
+sample.hyperparams <- function(fold.count, samples, learning.rate, a.b.g.range, G.S.range) {
+    grid <- data.frame(config.index = seq(samples), alpha.beta.gamma = 10^runif(samples, 
+        a.b.g.range[1], a.b.g.range[2]), G.S = 10^runif(samples, G.S.range[1], G.S.range[2]), learning.rate = learning.rate)
+
+    grid.w.folds <- lapply(seq(fold.count), function(f) { 
+        cbind(grid, fold=f)
+    })
+
+    return(do.call(rbind, grid.w.folds))
+}
+
+option_list = list(
+    make_option("--fold.count", type="integer", help="dataset file name", default=5),
+    make_option("--randseed", type="integer", help="dataset file name", default=5),
+    make_option("--samples", type="integer", help="dataset file name", default=100),
+    make_option("--G.S.range", type="character", help="range that G.S will be sampled from. (arg is used to exponentate 10, so -1:1 is the range 0.1 to 10)", default="-5:0.5"),
+    make_option("--alpha.beta.gamma.range", type="character", help="range that alpha.beta.gamma will be sampled from. (arg is used to exponentate 10, so -1:1 is the range 0.1 to 10)", default="-5:0.5"),
+    make_option("--full.data.file", type="character", default="full_data.Rdata"),
+    make_option("--model.dest", type="character", default="model.Rdata"),
+    make_option("--perf.log.dest", type="character", default="perf.log"),
+    make_option("--learning.rate", type="numeric", default=0.005),
+    make_option("--output.file", type="character", default="hyperparameter-samples.csv")
+); 
+ 
+opt_parser = OptionParser(option_list=option_list);
+opt = parse_args(opt_parser);
+
+a.b.g.range = as.numeric(strsplit(opt$alpha.beta.gamma.range, ":")[[1]])
+G.S.range = as.numeric(strsplit(opt$G.S, ":")[[1]])
+
+set.seed(opt$randseed)
+hyperparams <- sample.hyperparams(opt$fold.count, opt$samples, opt$learning.rate, a.b.g.range, G.S.range)
+write.csv(hyperparams, file=opt$output.file, row.names=F)
+cat("Wrote", opt$output.file, "\n")

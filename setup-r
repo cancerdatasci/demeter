@@ -1,0 +1,11 @@
+#!/usr/bin/env Rscript
+
+installed <- .packages(all = TRUE)
+for(pkg in c("foreach", "Rcpp", "futile.logger", "optparse", "plyr", "data.table", "doMC", "BradleyTerry2", "argparser", "ggplot2", "car", "reshape2")) {
+  if(!pkg %in% installed) {
+    install.packages(pkg, repos="https://cran.cnr.berkeley.edu/")
+  }
+}
+install.packages("https://cran.r-project.org/src/contrib/Archive/caret/caret_6.0-52.tar.gz", repos=NULL)
+
+cat("All required packages installed\n")

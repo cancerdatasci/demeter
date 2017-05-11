@@ -1,0 +1,58 @@
+#!/usr/bin/env Rscript
+
+source("dependencies.R")
+source("demeter.R")
+source("pre_fit.R")
+source("post_fit.R")
+library(optparse)
+
+flog.appender(appender.console())
+flog.threshold(DEBUG)
+
+option_list = list(
+    make_option("--randseed", type="integer"),
+    make_option("--G.S", type="numeric"),
+    make_option("--alpha.beta.gamma", type="numeric"),
+    make_option("--learning.rate", type="numeric"),
+    make_option("--full.data.file", type="character"),
+    make_option("--dest.dir", type="character"),
+    make_option("--max.num.iter", type="integer")
+); 
+ 
+opt_parser = OptionParser(option_list=option_list);
+print( commandArgs(trailingOnly = TRUE) )
+opt = parse_args(opt_parser);
+
+holdout.fold <- opt$holdout.fold
+fold.count <- opt$fold.count
+seed <- opt$randseed
+
+# this will load 'm' and 'full.data'
+load(opt$full.data.file)
+stopifnot(!is.null(m))
+
+set.seed(seed)
+
+optval <- function(n) {
+    v <- opt[[n]]
+    if(is.null(v)) {
+        stop("Expected a value for ", n, " but got NULL")
+    }
+    v
+}
+
+learning.rate <- optval("learning.rate")
+max.num.iter <- optval("max.num.iter")
+performance.log.file <- tempfile()
+G.S <- optval("G.S")
+alpha.beta.gamma <- optval("alpha.beta.gamma")
+dest.dir <- optval("dest.dir")
+
+# this will load 'm' and 'full.data'
+load(opt$full.data.file)
+stopifnot(!is.null(m))
+
+mu <- 0
+lambda <- c(G.S, G.S, alpha.beta.gamma, alpha.beta.gamma, mu, alpha.beta.gamma)
+
+DEMETER(m, learning.rate, lambda, max.num.iter, dest.dir)

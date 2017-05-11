@@ -1,0 +1,50 @@
+#!/usr/bin/env Rscript
+
+args <- commandArgs(trailingOnly = TRUE)
+if(length(args) != 2) {
+   stop("Required parameters: results_dir, output_file")
+}
+
+result.dir <- args[[1]]
+output.file <- args[[2]]
+
+results <- lapply(Sys.glob(paste0(result.dir, "/*/out.rds")), function(x) {
+    readRDS(x)
+})
+
+result.table <- do.call(rbind, lapply(results, function(x) {
+    t <- x
+    t[["performance.log"]] <- NULL
+    t[["model.dest"]] <- NULL
+    as.data.frame(t)
+}))
+
+performance.log.table <- do.call(rbind, lapply(results, function(x) {
+    y <- x$performance.log
+    y$holdout.fold <- x$holdout.fold
+    y$index <- x$index
+    y
+}))
+
+
+library(plyr)
+results.with.best <- merge(result.table, 
+  ddply(performance.log.table, 
+    c("index", "holdout.fold"), 
+    function(x) { 
+      x[which.min(x$VSE), c("VSE", "iteration")]  
+    }))
+
+summarized.results.with.best <- ddply(results.with.best, "index", function(x) { data.frame(
+        learning.rate=x$learning.rate[1],
+	G.S=x$G.S[1],
+	alpha.beta.gamma=x$alpha.beta.gamma[1],
+	max.iteration=max(x$iteration),
+	mean.vrmse=mean(x$VSE**0.5), 
+	min.vrmse=min(x$VSE**0.5), 
+	max.vrmse=max(x$VSE**0.5)) })
+
+saveRDS(list(result.table=results.with.best, performance.log.table=performance.log.table), file=output.file)
+cat("Wrote merged result to", output.file, "\n")
+
+print(head(summarized.results.with.best[order(summarized.results.with.best$mean.vrmse),], 20))

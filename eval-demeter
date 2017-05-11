@@ -1,0 +1,145 @@
+#!/usr/bin/env Rscript
+
+source("dependencies.R")
+source("demeter.R")
+source("pre_fit.R")
+source("k_fold.R")
+library(optparse)
+
+prediction_func <- function(model, data) {
+    print("predict_func")
+    hhat <- ComputeHHat(model)
+    return(hhat[data$index])
+}
+
+shuffle.m <- function(m) {
+    index <- sample(which(!is.na(m$H)))
+    data.frame(index = index, value = m$H[index])
+}
+
+############ 
+
+flog.appender(appender.console())
+flog.threshold(DEBUG)
+
+option_list = list(
+    make_option("--holdout.fold", type="integer"),
+    make_option("--config.index", type="integer"),
+    make_option("--fold.count", type="integer"),
+    make_option("--randseed", type="integer"),
+    make_option("--G.S", type="numeric"),
+    make_option("--alpha.beta.gamma", type="numeric"),
+    make_option("--learning.rate", type="numeric"),
+    make_option("--full.data.file", type="character"),
+    make_option("--model.dest", type="character"),
+    make_option("--perf.log.file", type="character"),
+    make_option("--output.file", type="character"),
+    make_option("--max.num.iter", type="integer")
+); 
+ 
+opt_parser = OptionParser(option_list=option_list);
+print( commandArgs(trailingOnly = TRUE) )
+opt = parse_args(opt_parser);
+
+holdout.fold <- opt$holdout.fold
+fold.count <- opt$fold.count
+seed <- opt$randseed
+
+# this will load 'm' and 'full.data'
+load(opt$full.data.file)
+stopifnot(!is.null(m))
+
+set.seed(seed)
+full.data <- shuffle.m(m)
+stopifnot(!is.null(full.data))
+
+optval <- function(n) {
+    v <- opt[[n]]
+    if(is.null(v)) {
+        stop("Expected a value for ", n, " but got NULL")
+    }
+    v
+}
+
+learning.rate <- optval("learning.rate")
+max.num.iter <- optval("max.num.iter")
+index <- optval("config.index")
+performance.log.file <- tempfile()
+G.S <- optval("G.S")
+alpha.beta.gamma <- optval("alpha.beta.gamma")
+model.dest <- opt[["model.dest"]] # can be null
+
+model_func <- function(data) {
+    training.datapoints <- data$index
+
+    mu <- 0
+    lambda <- c(G.S, G.S, alpha.beta.gamma, alpha.beta.gamma, 
+        mu, alpha.beta.gamma)
+    print(lambda)
+    
+    print("model_func")
+    str(data)
+    print(str(data))
+    
+    mask <- matrix(FALSE, nrow = nrow(m$H), ncol = ncol(m$H))
+    mask[training.datapoints] <- TRUE
+    
+    copy.with.missing.data <- m
+    copy.with.missing.data$H[!mask] <- NA
+    
+    copy.with.missing.data <- InitModelParams(copy.with.missing.data, copy.with.missing.data$H, 
+        method = "means")
+    copy.with.missing.data <- mask.G.and.S(copy.with.missing.data)
+    copy.with.missing.data <- FitAlphaBeta(copy.with.missing.data)
+    
+    m$mu <- copy.with.missing.data$mu
+    m$alpha <- copy.with.missing.data$alpha
+    m$beta <- copy.with.missing.data$beta
+    m$gamma <- copy.with.missing.data$gamma
+    m$G <- copy.with.missing.data$G
+    m$S <- copy.with.missing.data$S
+
+    #save(m, learning.rate, lambda, max.num.iter, training.datapoints, performance.log.file,
+    #	file="pre-optimizemodel.Rdata")
+    
+    m <- optimizeLGSModel(m, lambda, learning.rate, max.num.iter, training.datapoints, performance.log.file)
+    
+    if (!is.null(model.dest)) {
+        d <- list(G = m$G, S = m$S, alpha = m$alpha, beta = m$beta, gamma = m$gamma, mu = m$mu)
+        save(d, file = model.dest)
+    }
+    
+    print("model_func done")
+    
+    return(m)
+}
+
+
+    compute.sampled.performance(seed, 0.01, fold.count, holdout.fold, full.data, 
+        model_func, prediction_func)
+
+#performance <- tryCatch({
+#    compute.sampled.performance(seed, 0.01, fold.count, holdout.fold, full.data, 
+#        model_func, prediction_func)
+#}, error = function(e) {
+#    traceback()
+#    print(names(e))
+#    print(e$call)
+#    print(e)
+#    print(str(e))
+#    stopifnot(e$message == "Computing pointHhat resulted in nan")
+#    setNames(c(NA, NA), c("RMSE", "Rsquared"))
+#})
+
+load(performance.log.file)
+task.result <- list(index=index,
+    fold.count=fold.count,
+    learning.rate = learning.rate, 
+    max.num.iter = max.num.iter,
+    performance.log = performance.log,
+    G.S = G.S,
+    alpha.beta.gamma = alpha.beta.gamma,
+    model.dest = model.dest,
+    holdout.fold = holdout.fold)
+
+saveRDS(task.result, file = opt$output.file)

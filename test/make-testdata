@@ -1,0 +1,45 @@
+#!/usr/bin/env Rscript
+
+a.samples <- paste0("SA", seq(10))
+b.samples <- paste0("SB", seq(10))
+
+rand.dna <- function(len, count) {
+  sapply(seq(count), function(x) { paste0(sample(c("A", "T", "G", "C"), size=len, replace = T), collapse="") })
+}
+
+seed.seqs <- rand.dna(7,4)
+hps <- paste0(rand.dna(10, 20), sample(seed.seqs, 10, replace=T), rand.dna(4, 20))
+
+gene.hps <- paste0(hps, "_G", as.character(sample(seq(4), replace=T, length(hps))), sep="")
+# make a single gene family.  Some code breaks if we don't have at least one
+
+a.guides <- gene.hps
+b.guides <- gene.hps
+
+a <- matrix(runif(length(a.samples) * length(a.guides)), nrow=length(a.guides), ncol=length(a.samples), dimnames=list(a.guides, a.samples))
+b <- matrix(runif(length(b.samples) * length(b.guides)), nrow=length(b.guides), ncol=length(b.samples), dimnames=list(b.guides, b.samples))
+
+# make a single gene family.  Some code breaks if we don't have at least one
+rows.to.dup <- a[grep(".*_G1$", rownames(a)), , drop=F]
+stopifnot(nrow(rows.to.dup) > 0)
+rownames(rows.to.dup) <- sub("_G1", "_GDUP", rownames(rows.to.dup))
+
+a <- rbind(a, rows.to.dup)
+
+batches <- data.frame( sample=c(a.samples, b.samples), batch=c(rep(1, length(a.samples)), rep(2, length(b.samples))))
+
+write.as.gct <- function(x, fn) {
+    desc <- sub("[^_]+_(.*)", "\\1", rownames(x))
+    df <- cbind(ID=rownames(x), Description=desc, as.data.frame(x))
+    rownames(df) <- rownames(x)
+
+    f <- file(fn, "wt")
+    writeLines(c("#1.2",paste(nrow(df), ncol(df)-2)), f)
+    write.table(df, f, row.names=F, col.names=T, quote=F)
+    close(f)
+}
+
+
+write.as.gct(a, "testdata/fc_matrix_1.gct")
+write.as.gct(b, "testdata/fc_matrix_2.gct")
+write.csv(batches, "testdata/batches.csv", row.names=F)

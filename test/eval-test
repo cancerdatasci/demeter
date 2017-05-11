@@ -1,0 +1,2 @@
+#!/bin/bash
+./eval-demeter --holdout.fold=1 --config.index=1 --fold.count=5 --randseed=1 --G.S=0.001 --alpha.beta.gamma=0.001 --full.data.file=merged.Rdata --model.dest=m.Rdata --output.file=out --learning.rate=0.001 --max.num.iter=5
