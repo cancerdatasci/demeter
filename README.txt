@@ -1,4 +1,4 @@
-DEMETER v1.0
+DEMETER v2.20.2
 ------------
 
 Scripts for deconvolving seed effects from gene effects in shRNA screens via the DEMETER method.
