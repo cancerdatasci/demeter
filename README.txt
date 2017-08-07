@@ -29,6 +29,11 @@ The process of running DEMETER is in three steps:
 
 example: ./preprocess-gcts test/reformatted.Rdata test/testdata/batches.csv test/testdata/fc_matrix_1.gct,test/testdata/fc_matrix_2.gct
 
+The batches.csv file must have at least two columns in it: "Name" which
+should be the cell line name as it appears in the GCT file and 
+"DEMETER batch" which should be a number (the first batch should be denoted
+as 1) which represents which batch the line belongs to.
+
 2. Find decent hyperparameters by performing a random sampling of the space and picking the best
 
 example:

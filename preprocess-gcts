@@ -22,6 +22,11 @@ batches.filename <- args$batches
 output.filename <- args$output_file
 
 batch.per.sample <- read.csv(batches.filename, check.names=F)
+
+if (any(!(c("DEMETER batch", "Name") %in% colnames(batch.per.sample)))) {
+    stop(paste0("The batch file \"", batches.filename, "\" must contain columns named \"DEMETER batch\" and \"Name\""))
+}
+
 batch.per.sample <- setNames(batch.per.sample[["DEMETER batch"]],
 	batch.per.sample[["Name"]])
 
