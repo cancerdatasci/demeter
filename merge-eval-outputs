@@ -8,7 +8,7 @@ if(length(args) != 2) {
 result.dir <- args[[1]]
 output.file <- args[[2]]
 
-results <- lapply(Sys.glob(paste0(result.dir, "/*/out.rds")), function(x) {
+results <- lapply(list.files(result.dir, recursive=T, full.names=T), function(x) {
     readRDS(x)
 })
 
