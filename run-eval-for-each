@@ -1,0 +1,17 @@
+#!/usr/bin/env Rscript
+
+args <- commandArgs(trailingOnly = TRUE)
+processed.file <- args[[1]]
+param.file <- args[[2]]
+output.prefix <- args[[3]]
+
+params <- read.csv(param.file)
+
+for(i in seq(nrow(params))) {
+    p <- params[i,]
+    cmd <- paste0("./eval-demeter --holdout.fold=", p$fold, " --config.index=", p$config.index, 
+                " --fold.count=5 --randseed=1 --G.S=", p$G.S, " --alpha.beta.gamma=", p$alpha.beta.gamma,
+                " --full.data.file ", processed.file, " --output.file=", output.prefix, "-", i, " ",
+                " --learning.rate=", p$learning.rate, " --max.num.iter=500")
+    cat(cmd, "\n")
+}
